@@ -18,23 +18,15 @@ namespace XNodeEditor {
         public static Styles _styles = null;
         public static GUIStyle OutputPort { get { return new GUIStyle(EditorStyles.label) { alignment = TextAnchor.UpperRight }; } }
         public class Styles {
-            public GUIStyle inputPort, outputPort, nodeHeader, nodeBody, tooltip, nodeHighlight;
+            public GUIStyle inputPort, nodeHeader, nodeBody, tooltip, nodeHighlight;
 
             public Styles() {
-                GUIStyle baseStyle = new GUIStyle("Label");
+                var baseStyle = new GUIStyle("Label");
                 baseStyle.fixedHeight = 18;
 
                 inputPort = new GUIStyle(baseStyle);
                 inputPort.alignment = TextAnchor.UpperLeft;
-                inputPort.padding.left = 0;
-                inputPort.active.background = dot;
-                inputPort.normal.background = dotOuter;
-
-                outputPort = new GUIStyle(baseStyle);
-                outputPort.alignment = TextAnchor.UpperRight;
-                outputPort.padding.right = 0;
-                outputPort.active.background = dot;
-                outputPort.normal.background = dotOuter;
+                inputPort.padding.left = 10;
 
                 nodeHeader = new GUIStyle();
                 nodeHeader.alignment = TextAnchor.MiddleCenter;
@@ -56,11 +48,11 @@ namespace XNodeEditor {
         }
 
         public static Texture2D GenerateGridTexture(Color line, Color bg) {
-            Texture2D tex = new Texture2D(64, 64);
-            Color[] cols = new Color[64 * 64];
-            for (int y = 0; y < 64; y++) {
-                for (int x = 0; x < 64; x++) {
-                    Color col = bg;
+            var tex = new Texture2D(64, 64);
+            var cols = new Color[64 * 64];
+            for (var y = 0; y < 64; y++) {
+                for (var x = 0; x < 64; x++) {
+                    var col = bg;
                     if (y % 16 == 0 || x % 16 == 0) col = Color.Lerp(line, bg, 0.65f);
                     if (y == 63 || x == 63) col = Color.Lerp(line, bg, 0.35f);
                     cols[(y * 64) + x] = col;
@@ -75,11 +67,11 @@ namespace XNodeEditor {
         }
 
         public static Texture2D GenerateCrossTexture(Color line) {
-            Texture2D tex = new Texture2D(64, 64);
-            Color[] cols = new Color[64 * 64];
-            for (int y = 0; y < 64; y++) {
-                for (int x = 0; x < 64; x++) {
-                    Color col = line;
+            var tex = new Texture2D(64, 64);
+            var cols = new Color[64 * 64];
+            for (var y = 0; y < 64; y++) {
+                for (var x = 0; x < 64; x++) {
+                    var col = line;
                     if (y != 31 && x != 31) col.a = 0;
                     cols[(y * 64) + x] = col;
                 }

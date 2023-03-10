@@ -2,8 +2,6 @@
 using UnityEngine;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector.Editor;
-using Sirenix.Utilities;
-using Sirenix.Utilities.Editor;
 #endif
 
 namespace XNodeEditor {
@@ -19,7 +17,6 @@ namespace XNodeEditor {
         }
     }
 #else
-    [CanEditMultipleObjects]
     public class GlobalGraphEditor : Editor {
         public override void OnInspectorGUI() {
             serializedObject.Update();
@@ -43,15 +40,14 @@ namespace XNodeEditor {
     public class GlobalNodeEditor : OdinEditor {
         public override void OnInspectorGUI() {
             if (GUILayout.Button("Edit graph", GUILayout.Height(40))) {
-                SerializedProperty graphProp = serializedObject.FindProperty("graph");
-                NodeEditorWindow w = NodeEditorWindow.Open(graphProp.objectReferenceValue as XNode.NodeGraph);
+                var graphProp = serializedObject.FindProperty("graph");
+                var w = NodeEditorWindow.Open(graphProp.objectReferenceValue as XNode.NodeGraph);
                 w.Home(); // Focus selected node
             }
             base.OnInspectorGUI();
         }
     }
 #else
-    [CanEditMultipleObjects]
     public class GlobalNodeEditor : Editor {
         public override void OnInspectorGUI() {
             serializedObject.Update();

@@ -14,7 +14,7 @@ namespace XNodeEditor {
 
         /// <summary> Show a rename popup for an asset at mouse position. Will trigger reimport of the asset on apply.
         public static RenamePopup Show(Object target, float width = 200) {
-            RenamePopup window = EditorWindow.GetWindow<RenamePopup>(true, "Rename " + target.name, true);
+            var window = GetWindow<RenamePopup>(true, "Rename " + target.name, true);
             if (current != null) current.Close();
             current = window;
             window.target = target;
@@ -28,7 +28,7 @@ namespace XNodeEditor {
         private void UpdatePositionToMouse() {
             if (Event.current == null) return;
             Vector3 mousePoint = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
-            Rect pos = position;
+            var pos = position;
             pos.x = mousePoint.x - position.width * 0.5f;
             pos.y = mousePoint.y - 10;
             position = pos;
@@ -47,16 +47,14 @@ namespace XNodeEditor {
             GUI.SetNextControlName(inputControlName);
             input = EditorGUILayout.TextField(input);
             EditorGUI.FocusTextInControl(inputControlName);
-            Event e = Event.current;
+            var e = Event.current;
             // If input is empty, revert name to default instead
             if (input == null || input.Trim() == "") {
                 if (GUILayout.Button("Revert to default") || (e.isKey && e.keyCode == KeyCode.Return)) {
                     target.name = NodeEditorUtilities.NodeDefaultName(target.GetType());
                     NodeEditor.GetEditor((XNode.Node)target, NodeEditorWindow.current).OnRename();
-                    if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target))) {
-                        AssetDatabase.SetMainObject((target as XNode.Node).graph, AssetDatabase.GetAssetPath(target));
-                        AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-                    }
+                    AssetDatabase.SetMainObject((target as XNode.Node).graph, AssetDatabase.GetAssetPath(target));
+                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
                     Close();
                     target.TriggerOnValidate();
                 }
@@ -66,10 +64,8 @@ namespace XNodeEditor {
                 if (GUILayout.Button("Apply") || (e.isKey && e.keyCode == KeyCode.Return)) {
                     target.name = input;
                     NodeEditor.GetEditor((XNode.Node)target, NodeEditorWindow.current).OnRename();
-                    if (!string.IsNullOrEmpty(AssetDatabase.GetAssetPath(target))) {
-                        AssetDatabase.SetMainObject((target as XNode.Node).graph, AssetDatabase.GetAssetPath(target));
-                        AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
-                    }
+                    AssetDatabase.SetMainObject((target as XNode.Node).graph, AssetDatabase.GetAssetPath(target));
+                    AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(target));
                     Close();
                     target.TriggerOnValidate();
                 }

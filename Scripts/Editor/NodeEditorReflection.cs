@@ -1,19 +1,17 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-#if UNITY_2019_1_OR_NEWER && USE_ADVANCED_GENERIC_MENU
-using GenericMenu = XNodeEditor.AdvancedGenericMenu;
-#endif
+using XNode;
 
 namespace XNodeEditor {
     /// <summary> Contains reflection-related extensions built for xNode </summary>
     public static class NodeEditorReflection {
         [NonSerialized] private static Dictionary<Type, Color> nodeTint;
         [NonSerialized] private static Dictionary<Type, int> nodeWidth;
+        [NonSerialized] private static Dictionary<Type, Type> customNodeGraphNodeType;
         /// <summary> All available node types </summary>
         public static Type[] nodeTypes { get { return _nodeTypes != null ? _nodeTypes : _nodeTypes = GetNodeTypes(); } }
 
@@ -21,20 +19,20 @@ namespace XNodeEditor {
 
         /// <summary> Return a delegate used to determine whether window is docked or not. It is faster to cache this delegate than run the reflection required each time. </summary>
         public static Func<bool> GetIsDockedDelegate(this EditorWindow window) {
-            BindingFlags fullBinding = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            MethodInfo isDockedMethod = typeof(EditorWindow).GetProperty("docked", fullBinding).GetGetMethod(true);
+            var fullBinding = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            var isDockedMethod = typeof(EditorWindow).GetProperty("docked", fullBinding).GetGetMethod(true);
             return (Func<bool>) Delegate.CreateDelegate(typeof(Func<bool>), window, isDockedMethod);
         }
 
         public static Type[] GetNodeTypes() {
             //Get all classes deriving from Node via reflection
-            return GetDerivedTypes(typeof(XNode.Node));
+            return GetDerivedTypes(typeof(Node));
         }
 
         /// <summary> Custom node tint colors defined with [NodeColor(r, g, b)] </summary>
         public static bool TryGetAttributeTint(this Type nodeType, out Color tint) {
             if (nodeTint == null) {
-                CacheAttributes<Color, XNode.Node.NodeTintAttribute>(ref nodeTint, x => x.color);
+                CacheAttributes<Color, Node.NodeTintAttribute>(ref nodeTint, x => x.color);
             }
             return nodeTint.TryGetValue(nodeType, out tint);
         }
@@ -42,17 +40,27 @@ namespace XNodeEditor {
         /// <summary> Get custom node widths defined with [NodeWidth(width)] </summary>
         public static bool TryGetAttributeWidth(this Type nodeType, out int width) {
             if (nodeWidth == null) {
-                CacheAttributes<int, XNode.Node.NodeWidthAttribute>(ref nodeWidth, x => x.width);
+                CacheAttributes<int, Node.NodeWidthAttribute>(ref nodeWidth, x => x.width);
             }
             return nodeWidth.TryGetValue(nodeType, out width);
         }
 
+        /// <summary> Get custom node graphs node types defined with [CustomNodeGraph(typeof(CustomNode))] </summary>
+        public static bool TryGetAttributeCustomNodeGraph(this Type nodeGraphType, out Type nodeType)
+        {
+            if (customNodeGraphNodeType == null)
+            {
+                CacheAttributes<Type, NodeGraph.CustomNodeGraphAttribute>(ref customNodeGraphNodeType, attribute => attribute.NodeType);
+            }
+            return customNodeGraphNodeType.TryGetValue(nodeGraphType, out nodeType);
+        }
+
         private static void CacheAttributes<V, A>(ref Dictionary<Type, V> dict, Func<A, V> getter) where A : Attribute {
             dict = new Dictionary<Type, V>();
-            for (int i = 0; i < nodeTypes.Length; i++) {
-                object[] attribs = nodeTypes[i].GetCustomAttributes(typeof(A), true);
+            for (var i = 0; i < nodeTypes.Length; i++) {
+                var attribs = nodeTypes[i].GetCustomAttributes(typeof(A), true);
                 if (attribs == null || attribs.Length == 0) continue;
-                A attrib = attribs[0] as A;
+                var attrib = attribs[0] as A;
                 dict.Add(nodeTypes[i], getter(attrib));
             }
         }
@@ -60,17 +68,17 @@ namespace XNodeEditor {
         /// <summary> Get FieldInfo of a field, including those that are private and/or inherited </summary>
         public static FieldInfo GetFieldInfo(this Type type, string fieldName) {
             // If we can't find field in the first run, it's probably a private field in a base class.
-            FieldInfo field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            var field = type.GetField(fieldName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             // Search base classes for private fields only. Public fields are found above
-            while (field == null && (type = type.BaseType) != typeof(XNode.Node)) field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+            while (field == null && (type = type.BaseType) != typeof(Node)) field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
             return field;
         }
 
         /// <summary> Get all classes deriving from baseType via reflection </summary>
         public static Type[] GetDerivedTypes(this Type baseType) {
-            List<System.Type> types = new List<System.Type>();
-            System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-            foreach (Assembly assembly in assemblies) {
+            var types = new List<Type>();
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in assemblies) {
                 try {
                     types.AddRange(assembly.GetTypes().Where(t => !t.IsAbstract && baseType.IsAssignableFrom(t)).ToArray());
                 } catch (ReflectionTypeLoadException) { }
@@ -80,17 +88,17 @@ namespace XNodeEditor {
 
         /// <summary> Find methods marked with the [ContextMenu] attribute and add them to the context menu </summary>
         public static void AddCustomContextMenuItems(this GenericMenu contextMenu, object obj) {
-            KeyValuePair<ContextMenu, MethodInfo>[] items = GetContextMenuMethods(obj);
+            var items = GetContextMenuMethods(obj);
             if (items.Length != 0) {
                 contextMenu.AddSeparator("");
-                List<string> invalidatedEntries = new List<string>();
-                foreach (KeyValuePair<ContextMenu, MethodInfo> checkValidate in items) {
+                var invalidatedEntries = new List<string>();
+                foreach (var checkValidate in items) {
                     if (checkValidate.Key.validate && !(bool) checkValidate.Value.Invoke(obj, null)) {
                         invalidatedEntries.Add(checkValidate.Key.menuItem);
                     }
                 }
-                for (int i = 0; i < items.Length; i++) {
-                    KeyValuePair<ContextMenu, MethodInfo> kvp = items[i];
+                for (var i = 0; i < items.Length; i++) {
+                    var kvp = items[i];
                     if (invalidatedEntries.Contains(kvp.Key.menuItem)) {
                         contextMenu.AddDisabledItem(new GUIContent(kvp.Key.menuItem));
                     } else {
@@ -102,7 +110,7 @@ namespace XNodeEditor {
 
         /// <summary> Call OnValidate on target </summary>
         public static void TriggerOnValidate(this UnityEngine.Object target) {
-            System.Reflection.MethodInfo onValidate = null;
+            MethodInfo onValidate = null;
             if (target != null) {
                 onValidate = target.GetType().GetMethod("OnValidate", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 if (onValidate != null) onValidate.Invoke(target, null);
@@ -110,11 +118,11 @@ namespace XNodeEditor {
         }
 
         public static KeyValuePair<ContextMenu, MethodInfo>[] GetContextMenuMethods(object obj) {
-            Type type = obj.GetType();
-            MethodInfo[] methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
-            List<KeyValuePair<ContextMenu, MethodInfo>> kvp = new List<KeyValuePair<ContextMenu, MethodInfo>>();
-            for (int i = 0; i < methods.Length; i++) {
-                ContextMenu[] attribs = methods[i].GetCustomAttributes(typeof(ContextMenu), true).Select(x => x as ContextMenu).ToArray();
+            var type = obj.GetType();
+            var methods = type.GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            var kvp = new List<KeyValuePair<ContextMenu, MethodInfo>>();
+            for (var i = 0; i < methods.Length; i++) {
+                var attribs = methods[i].GetCustomAttributes(typeof(ContextMenu), true).Select(x => x as ContextMenu).ToArray();
                 if (attribs == null || attribs.Length == 0) continue;
                 if (methods[i].GetParameters().Length != 0) {
                     Debug.LogWarning("Method " + methods[i].DeclaringType.Name + "." + methods[i].Name + " has parameters and cannot be used for context menu commands.");
@@ -125,7 +133,7 @@ namespace XNodeEditor {
                     continue;
                 }
 
-                for (int k = 0; k < attribs.Length; k++) {
+                for (var k = 0; k < attribs.Length; k++) {
                     kvp.Add(new KeyValuePair<ContextMenu, MethodInfo>(attribs[k], methods[i]));
                 }
             }

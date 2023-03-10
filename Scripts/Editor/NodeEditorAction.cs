@@ -4,9 +4,6 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using XNodeEditor.Internal;
-#if UNITY_2019_1_OR_NEWER && USE_ADVANCED_GENERIC_MENU
-using GenericMenu = XNodeEditor.AdvancedGenericMenu;
-#endif
 
 namespace XNodeEditor {
     public partial class NodeEditorWindow {
@@ -17,25 +14,16 @@ namespace XNodeEditor {
 
         public static XNode.Node[] copyBuffer = null;
 
-        public bool IsDraggingPort { get { return draggedOutput != null; } }
-        public bool IsHoveringPort { get { return hoveredPort != null; } }
-        public bool IsHoveringNode { get { return hoveredNode != null; } }
-        public bool IsHoveringReroute { get { return hoveredReroute.port != null; } }
-
-        /// <summary> Return the dragged port or null if not exist </summary>
-        public XNode.NodePort DraggedOutputPort { get { XNode.NodePort result = draggedOutput; return result; } }
-        /// <summary> Return the Hovered port or null if not exist </summary>
-        public XNode.NodePort HoveredPort { get { XNode.NodePort result = hoveredPort; return result; } }
-        /// <summary> Return the Hovered node or null if not exist </summary>
-        public XNode.Node HoveredNode { get { XNode.Node result = hoveredNode; return result; } }
-
+        private bool IsDraggingPort { get { return draggedOutput != null; } }
+        private bool IsHoveringPort { get { return hoveredPort != null; } }
+        private bool IsHoveringNode { get { return hoveredNode != null; } }
+        private bool IsHoveringReroute { get { return hoveredReroute.port != null; } }
         private XNode.Node hoveredNode = null;
         [NonSerialized] public XNode.NodePort hoveredPort = null;
         [NonSerialized] private XNode.NodePort draggedOutput = null;
         [NonSerialized] private XNode.NodePort draggedOutputTarget = null;
         [NonSerialized] private XNode.NodePort autoConnectOutput = null;
         [NonSerialized] private List<Vector2> draggedOutputReroutes = new List<Vector2>();
-
         private RerouteReference hoveredReroute = new RerouteReference();
         public List<RerouteReference> selectedReroutes = new List<RerouteReference>();
         private Vector2 dragBoxStart;
@@ -48,27 +36,34 @@ namespace XNodeEditor {
 
         public void Controls() {
             wantsMouseMove = true;
-            Event e = Event.current;
+            var e = Event.current;
             switch (e.type) {
                 case EventType.DragUpdated:
                 case EventType.DragPerform:
+                {
                     DragAndDrop.visualMode = DragAndDropVisualMode.Generic;
                     if (e.type == EventType.DragPerform) {
                         DragAndDrop.AcceptDrag();
                         graphEditor.OnDropObjects(DragAndDrop.objectReferences);
                     }
                     break;
+                }
                 case EventType.MouseMove:
+                {
                     //Keyboard commands will not get correct mouse position from Event
                     lastMousePosition = e.mousePosition;
                     break;
+                }
                 case EventType.ScrollWheel:
-                    float oldZoom = zoom;
+                {
+                    var oldZoom = zoom;
                     if (e.delta.y > 0) zoom += 0.1f * zoom;
                     else zoom -= 0.1f * zoom;
                     if (NodeEditorPreferences.GetSettings().zoomToMouse) panOffset += (1 - oldZoom / zoom) * (WindowToGridPosition(e.mousePosition) + panOffset);
                     break;
+                }
                 case EventType.MouseDrag:
+                {
                     if (e.button == 0) {
                         if (IsDraggingPort) {
                             // Set target even if we can't connect, so as to prevent auto-conn menu from opening erroneously
@@ -85,16 +80,16 @@ namespace XNodeEditor {
                         }
                         if (currentActivity == NodeActivity.DragNode) {
                             // Holding ctrl inverts grid snap
-                            bool gridSnap = NodeEditorPreferences.GetSettings().gridSnap;
+                            var gridSnap = NodeEditorPreferences.GetSettings().gridSnap;
                             if (e.control) gridSnap = !gridSnap;
 
-                            Vector2 mousePos = WindowToGridPosition(e.mousePosition);
+                            var mousePos = WindowToGridPosition(e.mousePosition);
                             // Move selected nodes with offset
-                            for (int i = 0; i < Selection.objects.Length; i++) {
+                            for (var i = 0; i < Selection.objects.Length; i++) {
                                 if (Selection.objects[i] is XNode.Node) {
-                                    XNode.Node node = Selection.objects[i] as XNode.Node;
+                                    var node = Selection.objects[i] as XNode.Node;
                                     Undo.RecordObject(node, "Moved Node");
-                                    Vector2 initial = node.position;
+                                    var initial = node.position;
                                     node.position = mousePos + dragOffset[i];
                                     if (gridSnap) {
                                         node.position.x = (Mathf.Round((node.position.x + 8) / 16) * 16) - 8;
@@ -102,9 +97,9 @@ namespace XNodeEditor {
                                     }
 
                                     // Offset portConnectionPoints instantly if a node is dragged so they aren't delayed by a frame.
-                                    Vector2 offset = node.position - initial;
+                                    var offset = node.position - initial;
                                     if (offset.sqrMagnitude > 0) {
-                                        foreach (XNode.NodePort output in node.Outputs) {
+                                        foreach (var output in node.Outputs) {
                                             Rect rect;
                                             if (portConnectionPoints.TryGetValue(output, out rect)) {
                                                 rect.position += offset;
@@ -112,7 +107,7 @@ namespace XNodeEditor {
                                             }
                                         }
 
-                                        foreach (XNode.NodePort input in node.Inputs) {
+                                        foreach (var input in node.Inputs) {
                                             Rect rect;
                                             if (portConnectionPoints.TryGetValue(input, out rect)) {
                                                 rect.position += offset;
@@ -123,8 +118,8 @@ namespace XNodeEditor {
                                 }
                             }
                             // Move selected reroutes with offset
-                            for (int i = 0; i < selectedReroutes.Count; i++) {
-                                Vector2 pos = mousePos + dragOffset[Selection.objects.Length + i];
+                            for (var i = 0; i < selectedReroutes.Count; i++) {
+                                var pos = mousePos + dragOffset[Selection.objects.Length + i];
                                 if (gridSnap) {
                                     pos.x = (Mathf.Round(pos.x / 16) * 16);
                                     pos.y = (Mathf.Round(pos.y / 16) * 16);
@@ -139,8 +134,8 @@ namespace XNodeEditor {
                             dragBoxStart = WindowToGridPosition(e.mousePosition);
                             Repaint();
                         } else if (currentActivity == NodeActivity.DragGrid) {
-                            Vector2 boxStartPos = GridToWindowPosition(dragBoxStart);
-                            Vector2 boxSize = e.mousePosition - boxStartPos;
+                            var boxStartPos = GridToWindowPosition(dragBoxStart);
+                            var boxSize = e.mousePosition - boxStartPos;
                             if (boxSize.x < 0) { boxStartPos.x += boxSize.x; boxSize.x = Mathf.Abs(boxSize.x); }
                             if (boxSize.y < 0) { boxStartPos.y += boxSize.y; boxSize.y = Mathf.Abs(boxSize.y); }
                             selectionBox = new Rect(boxStartPos, boxSize);
@@ -154,7 +149,9 @@ namespace XNodeEditor {
                         }
                     }
                     break;
+                }
                 case EventType.MouseDown:
+                {
                     Repaint();
                     if (e.button == 0) {
                         draggedOutputReroutes.Clear();
@@ -167,9 +164,9 @@ namespace XNodeEditor {
                                 hoveredPort.VerifyConnections();
                                 autoConnectOutput = null;
                                 if (hoveredPort.IsConnected) {
-                                    XNode.Node node = hoveredPort.node;
-                                    XNode.NodePort output = hoveredPort.Connection;
-                                    int outputConnectionIndex = output.GetConnectionIndex(hoveredPort);
+                                    var node = hoveredPort.node;
+                                    var output = hoveredPort.Connection;
+                                    var outputConnectionIndex = output.GetConnectionIndex(hoveredPort);
                                     draggedOutputReroutes = output.GetReroutePoints(outputConnectionIndex);
                                     hoveredPort.Disconnect(output);
                                     draggedOutput = output;
@@ -216,17 +213,19 @@ namespace XNodeEditor {
                         }
                     }
                     break;
+                }
                 case EventType.MouseUp:
+                {
                     if (e.button == 0) {
                         //Port drag release
                         if (IsDraggingPort) {
                             // If connection is valid, save it
-                            if (draggedOutputTarget != null && graphEditor.CanConnect(draggedOutput, draggedOutputTarget)) {
-                                XNode.Node node = draggedOutputTarget.node;
+                            if (draggedOutputTarget != null && draggedOutput.CanConnectTo(draggedOutputTarget)) {
+                                var node = draggedOutputTarget.node;
                                 if (graph.nodes.Count != 0) draggedOutput.Connect(draggedOutputTarget);
 
                                 // ConnectionIndex can be -1 if the connection is removed instantly after creation
-                                int connectionIndex = draggedOutput.GetConnectionIndex(draggedOutputTarget);
+                                var connectionIndex = draggedOutput.GetConnectionIndex(draggedOutputTarget);
                                 if (connectionIndex != -1) {
                                     draggedOutput.GetReroutePoints(connectionIndex).AddRange(draggedOutputReroutes);
                                     if (NodeEditor.onUpdateNode != null) NodeEditor.onUpdateNode(node);
@@ -235,8 +234,8 @@ namespace XNodeEditor {
                             }
                             // Open context menu for auto-connection if there is no target node
                             else if (draggedOutputTarget == null && NodeEditorPreferences.GetSettings().dragToCreate && autoConnectOutput != null) {
-                                GenericMenu menu = new GenericMenu();
-                                graphEditor.AddContextMenuItems(menu, draggedOutput.ValueType);
+                                var menu = new GenericMenu();
+                                graphEditor.AddContextMenuItems(menu);
                                 menu.DropDown(new Rect(Event.current.mousePosition, Vector2.zero));
                             }
                             //Release dragged connection
@@ -245,8 +244,8 @@ namespace XNodeEditor {
                             EditorUtility.SetDirty(graph);
                             if (NodeEditorPreferences.GetSettings().autoSave) AssetDatabase.SaveAssets();
                         } else if (currentActivity == NodeActivity.DragNode) {
-                            IEnumerable<XNode.Node> nodes = Selection.objects.Where(x => x is XNode.Node).Select(x => x as XNode.Node);
-                            foreach (XNode.Node node in nodes) EditorUtility.SetDirty(node);
+                            var nodes = Selection.objects.Where(x => x is XNode.Node).Select(x => x as XNode.Node);
+                            foreach (var node in nodes) EditorUtility.SetDirty(node);
                             if (NodeEditorPreferences.GetSettings().autoSave) AssetDatabase.SaveAssets();
                         } else if (!IsHoveringNode) {
                             // If click outside node, release field focus
@@ -264,7 +263,7 @@ namespace XNodeEditor {
 
                             // Double click to center node
                             if (isDoubleClick) {
-                                Vector2 nodeDimension = nodeSizes.ContainsKey(hoveredNode) ? nodeSizes[hoveredNode] / 2 : Vector2.zero;
+                                var nodeDimension = nodeSizes.ContainsKey(hoveredNode) ? nodeSizes[hoveredNode] / 2 : Vector2.zero;
                                 panOffset = -hoveredNode.position - nodeDimension;
                             }
                         }
@@ -291,13 +290,13 @@ namespace XNodeEditor {
                             } else if (IsHoveringNode && IsHoveringTitle(hoveredNode)) {
                                 if (!Selection.Contains(hoveredNode)) SelectNode(hoveredNode, false);
                                 autoConnectOutput = null;
-                                GenericMenu menu = new GenericMenu();
+                                var menu = new GenericMenu();
                                 NodeEditor.GetEditor(hoveredNode, this).AddContextMenuItems(menu);
                                 menu.DropDown(new Rect(Event.current.mousePosition, Vector2.zero));
                                 e.Use(); // Fixes copy/paste context menu appearing in Unity 5.6.6f2 - doesn't occur in 2018.3.2f1 Probably needs to be used in other places.
                             } else if (!IsHoveringNode) {
                                 autoConnectOutput = null;
-                                GenericMenu menu = new GenericMenu();
+                                var menu = new GenericMenu();
                                 graphEditor.AddContextMenuItems(menu);
                                 menu.DropDown(new Rect(Event.current.mousePosition, Vector2.zero));
                             }
@@ -307,8 +306,10 @@ namespace XNodeEditor {
                     // Reset DoubleClick
                     isDoubleClick = false;
                     break;
+                }
                 case EventType.KeyDown:
-                    if (EditorGUIUtility.editingTextField || GUIUtility.keyboardControl != 0) break;
+                {
+                    if (EditorGUIUtility.editingTextField) break;
                     else if (e.keyCode == KeyCode.F) Home();
                     if (NodeEditorUtilities.IsMac()) {
                         if (e.keyCode == KeyCode.Return) RenameSelectedNode();
@@ -317,19 +318,21 @@ namespace XNodeEditor {
                     }
                     if (e.keyCode == KeyCode.A) {
                         if (Selection.objects.Any(x => graph.nodes.Contains(x as XNode.Node))) {
-                            foreach (XNode.Node node in graph.nodes) {
+                            foreach (var node in graph.nodes) {
                                 DeselectNode(node);
                             }
                         } else {
-                            foreach (XNode.Node node in graph.nodes) {
+                            foreach (var node in graph.nodes) {
                                 SelectNode(node, true);
                             }
                         }
                         Repaint();
                     }
                     break;
+                }
                 case EventType.ValidateCommand:
                 case EventType.ExecuteCommand:
+                {
                     if (e.commandName == "SoftDelete") {
                         if (e.type == EventType.ExecuteCommand) RemoveSelectedNodes();
                         e.Use();
@@ -340,40 +343,39 @@ namespace XNodeEditor {
                         if (e.type == EventType.ExecuteCommand) DuplicateSelectedNodes();
                         e.Use();
                     } else if (e.commandName == "Copy") {
-                        if (!EditorGUIUtility.editingTextField) {
-                            if (e.type == EventType.ExecuteCommand) CopySelectedNodes();
-                            e.Use();
-                        }
+                        if (e.type == EventType.ExecuteCommand) CopySelectedNodes();
+                        e.Use();
                     } else if (e.commandName == "Paste") {
-                        if (!EditorGUIUtility.editingTextField) {
-                            if (e.type == EventType.ExecuteCommand) PasteNodes(WindowToGridPosition(lastMousePosition));
-                            e.Use();
-                        }
+                        if (e.type == EventType.ExecuteCommand) PasteNodes(WindowToGridPosition(lastMousePosition));
+                        e.Use();
                     }
                     Repaint();
                     break;
+                }
                 case EventType.Ignore:
+                {
                     // If release mouse outside window
                     if (e.rawType == EventType.MouseUp && currentActivity == NodeActivity.DragGrid) {
                         Repaint();
                         currentActivity = NodeActivity.Idle;
                     }
                     break;
+                }
             }
         }
 
         private void RecalculateDragOffsets(Event current) {
             dragOffset = new Vector2[Selection.objects.Length + selectedReroutes.Count];
             // Selected nodes
-            for (int i = 0; i < Selection.objects.Length; i++) {
+            for (var i = 0; i < Selection.objects.Length; i++) {
                 if (Selection.objects[i] is XNode.Node) {
-                    XNode.Node node = Selection.objects[i] as XNode.Node;
+                    var node = Selection.objects[i] as XNode.Node;
                     dragOffset[i] = node.position - WindowToGridPosition(current.mousePosition);
                 }
             }
 
             // Selected reroutes
-            for (int i = 0; i < selectedReroutes.Count; i++) {
+            for (var i = 0; i < selectedReroutes.Count; i++) {
                 dragOffset[Selection.objects.Length + i] = selectedReroutes[i].GetPoint() - WindowToGridPosition(current.mousePosition);
             }
         }
@@ -382,8 +384,8 @@ namespace XNodeEditor {
         public void Home() {
             var nodes = Selection.objects.Where(o => o is XNode.Node).Cast<XNode.Node>().ToList();
             if (nodes.Count > 0) {
-                Vector2 minPos = nodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
-                Vector2 maxPos = nodes.Select(x => x.position + (nodeSizes.ContainsKey(x) ? nodeSizes[x] : Vector2.zero)).Aggregate((x, y) => new Vector2(Mathf.Max(x.x, y.x), Mathf.Max(x.y, y.y)));
+                var minPos = nodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
+                var maxPos = nodes.Select(x => x.position + (nodeSizes.ContainsKey(x) ? nodeSizes[x] : Vector2.zero)).Aggregate((x, y) => new Vector2(Mathf.Max(x.x, y.x), Mathf.Max(x.y, y.y)));
                 panOffset = -(minPos + (maxPos - minPos) / 2f);
             } else {
                 zoom = 2;
@@ -395,13 +397,13 @@ namespace XNodeEditor {
         public void RemoveSelectedNodes() {
             // We need to delete reroutes starting at the highest point index to avoid shifting indices
             selectedReroutes = selectedReroutes.OrderByDescending(x => x.pointIndex).ToList();
-            for (int i = 0; i < selectedReroutes.Count; i++) {
+            for (var i = 0; i < selectedReroutes.Count; i++) {
                 selectedReroutes[i].RemovePoint();
             }
             selectedReroutes.Clear();
-            foreach (UnityEngine.Object item in Selection.objects) {
+            foreach (var item in Selection.objects) {
                 if (item is XNode.Node) {
-                    XNode.Node node = item as XNode.Node;
+                    var node = item as XNode.Node;
                     graphEditor.RemoveNode(node);
                 }
             }
@@ -410,7 +412,7 @@ namespace XNodeEditor {
         /// <summary> Initiate a rename on the currently selected node </summary>
         public void RenameSelectedNode() {
             if (Selection.objects.Length == 1 && Selection.activeObject is XNode.Node) {
-                XNode.Node node = Selection.activeObject as XNode.Node;
+                var node = Selection.activeObject as XNode.Node;
                 Vector2 size;
                 if (nodeSizes.TryGetValue(node, out size)) {
                     RenamePopup.Show(Selection.activeObject, size.x);
@@ -432,10 +434,10 @@ namespace XNodeEditor {
         /// <summary> Duplicate selected nodes and select the duplicates </summary>
         public void DuplicateSelectedNodes() {
             // Get selected nodes which are part of this graph
-            XNode.Node[] selectedNodes = Selection.objects.Select(x => x as XNode.Node).Where(x => x != null && x.graph == graph).ToArray();
+            var selectedNodes = Selection.objects.Select(x => x as XNode.Node).Where(x => x != null && x.graph == graph).ToArray();
             if (selectedNodes == null || selectedNodes.Length == 0) return;
             // Get top left node position
-            Vector2 topLeftNode = selectedNodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
+            var topLeftNode = selectedNodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
             InsertDuplicateNodes(selectedNodes, topLeftNode + new Vector2(30, 30));
         }
 
@@ -451,37 +453,37 @@ namespace XNodeEditor {
             if (nodes == null || nodes.Length == 0) return;
 
             // Get top-left node
-            Vector2 topLeftNode = nodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
-            Vector2 offset = topLeft - topLeftNode;
+            var topLeftNode = nodes.Select(x => x.position).Aggregate((x, y) => new Vector2(Mathf.Min(x.x, y.x), Mathf.Min(x.y, y.y)));
+            var offset = topLeft - topLeftNode;
 
-            UnityEngine.Object[] newNodes = new UnityEngine.Object[nodes.Length];
-            Dictionary<XNode.Node, XNode.Node> substitutes = new Dictionary<XNode.Node, XNode.Node>();
-            for (int i = 0; i < nodes.Length; i++) {
-                XNode.Node srcNode = nodes[i];
+            var newNodes = new UnityEngine.Object[nodes.Length];
+            var substitutes = new Dictionary<XNode.Node, XNode.Node>();
+            for (var i = 0; i < nodes.Length; i++) {
+                var srcNode = nodes[i];
                 if (srcNode == null) continue;
 
                 // Check if user is allowed to add more of given node type
                 XNode.Node.DisallowMultipleNodesAttribute disallowAttrib;
-                Type nodeType = srcNode.GetType();
+                var nodeType = srcNode.GetType();
                 if (NodeEditorUtilities.GetAttrib(nodeType, out disallowAttrib)) {
-                    int typeCount = graph.nodes.Count(x => x.GetType() == nodeType);
+                    var typeCount = graph.nodes.Count(x => x.GetType() == nodeType);
                     if (typeCount >= disallowAttrib.max) continue;
                 }
 
-                XNode.Node newNode = graphEditor.CopyNode(srcNode);
+                var newNode = graphEditor.CopyNode(srcNode);
                 substitutes.Add(srcNode, newNode);
                 newNode.position = srcNode.position + offset;
                 newNodes[i] = newNode;
             }
 
             // Walk through the selected nodes again, recreate connections, using the new nodes
-            for (int i = 0; i < nodes.Length; i++) {
-                XNode.Node srcNode = nodes[i];
+            for (var i = 0; i < nodes.Length; i++) {
+                var srcNode = nodes[i];
                 if (srcNode == null) continue;
-                foreach (XNode.NodePort port in srcNode.Ports) {
-                    for (int c = 0; c < port.ConnectionCount; c++) {
-                        XNode.NodePort inputPort = port.direction == XNode.NodePort.IO.Input ? port : port.GetConnection(c);
-                        XNode.NodePort outputPort = port.direction == XNode.NodePort.IO.Output ? port : port.GetConnection(c);
+                foreach (var port in srcNode.Ports) {
+                    for (var c = 0; c < port.ConnectionCount; c++) {
+                        var inputPort = port.direction == XNode.NodePort.IO.Input ? port : port.GetConnection(c);
+                        var outputPort = port.direction == XNode.NodePort.IO.Output ? port : port.GetConnection(c);
 
                         XNode.Node newNodeIn, newNodeOut;
                         if (substitutes.TryGetValue(inputPort.node, out newNodeIn) && substitutes.TryGetValue(outputPort.node, out newNodeOut)) {
@@ -494,7 +496,6 @@ namespace XNodeEditor {
                     }
                 }
             }
-            EditorUtility.SetDirty(graph);
             // Select the new nodes
             Selection.objects = newNodes;
         }
@@ -502,16 +503,16 @@ namespace XNodeEditor {
         /// <summary> Draw a connection as we are dragging it </summary>
         public void DrawDraggedConnection() {
             if (IsDraggingPort) {
-                Gradient gradient = graphEditor.GetNoodleGradient(draggedOutput, null);
-                float thickness = graphEditor.GetNoodleThickness(draggedOutput, null);
-                NoodlePath path = graphEditor.GetNoodlePath(draggedOutput, null);
-                NoodleStroke stroke = graphEditor.GetNoodleStroke(draggedOutput, null);
+                var gradient = graphEditor.GetNoodleGradient(draggedOutput, null);
+                var thickness = graphEditor.GetNoodleThickness(draggedOutput, null);
+                var path = graphEditor.GetNoodlePath(draggedOutput, null);
+                var stroke = graphEditor.GetNoodleStroke(draggedOutput, null);
 
                 Rect fromRect;
                 if (!_portConnectionPoints.TryGetValue(draggedOutput, out fromRect)) return;
-                List<Vector2> gridPoints = new List<Vector2>();
+                var gridPoints = new List<Vector2>();
                 gridPoints.Add(fromRect.center);
-                for (int i = 0; i < draggedOutputReroutes.Count; i++) {
+                for (var i = 0; i < draggedOutputReroutes.Count; i++) {
                     gridPoints.Add(draggedOutputReroutes[i]);
                 }
                 if (draggedOutputTarget != null) gridPoints.Add(portConnectionPoints[draggedOutputTarget].center);
@@ -519,33 +520,32 @@ namespace XNodeEditor {
 
                 DrawNoodle(gradient, path, stroke, thickness, gridPoints);
 
-                GUIStyle portStyle = NodeEditorWindow.current.graphEditor.GetPortStyle(draggedOutput);
-                Color bgcol = Color.black;
-                Color frcol = gradient.colorKeys[0].color;
+                var bgcol = Color.black;
+                var frcol = gradient.colorKeys[0].color;
                 bgcol.a = 0.6f;
                 frcol.a = 0.6f;
 
                 // Loop through reroute points again and draw the points
-                for (int i = 0; i < draggedOutputReroutes.Count; i++) {
+                for (var i = 0; i < draggedOutputReroutes.Count; i++) {
                     // Draw reroute point at position
-                    Rect rect = new Rect(draggedOutputReroutes[i], new Vector2(16, 16));
+                    var rect = new Rect(draggedOutputReroutes[i], new Vector2(16, 16));
                     rect.position = new Vector2(rect.position.x - 8, rect.position.y - 8);
                     rect = GridToWindowRect(rect);
 
-                    NodeEditorGUILayout.DrawPortHandle(rect, bgcol, frcol, portStyle.normal.background, portStyle.active.background);
+                    NodeEditorGUILayout.DrawPortHandle(rect, bgcol, frcol);
                 }
             }
         }
 
         bool IsHoveringTitle(XNode.Node node) {
-            Vector2 mousePos = Event.current.mousePosition;
+            var mousePos = Event.current.mousePosition;
             //Get node position
-            Vector2 nodePos = GridToWindowPosition(node.position);
+            var nodePos = GridToWindowPosition(node.position);
             float width;
             Vector2 size;
             if (nodeSizes.TryGetValue(node, out size)) width = size.x;
             else width = 200;
-            Rect windowRect = new Rect(nodePos, new Vector2(width / zoom, 30 / zoom));
+            var windowRect = new Rect(nodePos, new Vector2(width / zoom, 30 / zoom));
             return windowRect.Contains(mousePos);
         }
 
@@ -553,9 +553,12 @@ namespace XNodeEditor {
         public void AutoConnect(XNode.Node node) {
             if (autoConnectOutput == null) return;
 
-            // Find compatible input port
-            XNode.NodePort inputPort = node.Ports.FirstOrDefault(x => x.IsInput && graphEditor.CanConnect(autoConnectOutput, x));
-            if (inputPort != null) autoConnectOutput.Connect(inputPort);
+            // Find input port of same type
+            var inputPort = node.Ports.FirstOrDefault(x => x.IsInput && x.ValueType == autoConnectOutput.ValueType);
+            // Fallback to input port
+            if (inputPort == null) inputPort = node.Ports.FirstOrDefault(x => x.IsInput);
+            // Autoconnect if connection is compatible
+            if (inputPort != null && inputPort.CanConnectTo(autoConnectOutput)) autoConnectOutput.Connect(inputPort);
 
             // Save changes
             EditorUtility.SetDirty(graph);

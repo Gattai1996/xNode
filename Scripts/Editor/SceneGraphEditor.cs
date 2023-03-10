@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using XNode;
@@ -16,10 +14,10 @@ namespace XNodeEditor {
             if (sceneGraph.graph == null) {
                 if (GUILayout.Button("New graph", GUILayout.Height(40))) {
                     if (graphType == null) {
-                        Type[] graphTypes = NodeEditorReflection.GetDerivedTypes(typeof(NodeGraph));
-                        GenericMenu menu = new GenericMenu();
-                        for (int i = 0; i < graphTypes.Length; i++) {
-                            Type graphType = graphTypes[i];
+                        var graphTypes = NodeEditorReflection.GetDerivedTypes(typeof(NodeGraph));
+                        var menu = new GenericMenu();
+                        for (var i = 0; i < graphTypes.Length; i++) {
+                            var graphType = graphTypes[i];
                             menu.AddItem(new GUIContent(graphType.Name), false, () => CreateGraph(graphType));
                         }
                         menu.ShowAsContext();
@@ -53,16 +51,15 @@ namespace XNodeEditor {
                     GUI.color = Color.white;
                 }
             }
-			DrawDefaultInspector();
         }
 
         private void OnEnable() {
             sceneGraph = target as SceneGraph;
-            Type sceneGraphType = sceneGraph.GetType();
+            var sceneGraphType = sceneGraph.GetType();
             if (sceneGraphType == typeof(SceneGraph)) {
                 graphType = null;
             } else {
-                Type baseType = sceneGraphType.BaseType;
+                var baseType = sceneGraphType.BaseType;
                 if (baseType.IsGenericType) {
                     graphType = sceneGraphType = baseType.GetGenericArguments() [0];
                 }
@@ -71,7 +68,7 @@ namespace XNodeEditor {
 
         public void CreateGraph(Type type) {
             Undo.RecordObject(sceneGraph, "Create graph");
-            sceneGraph.graph = ScriptableObject.CreateInstance(type) as NodeGraph;
+            sceneGraph.graph = CreateInstance(type) as NodeGraph;
             sceneGraph.graph.name = sceneGraph.name + "-graph";
         }
     }
