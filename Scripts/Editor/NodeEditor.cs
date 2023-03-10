@@ -1,21 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector.Editor;
-using Sirenix.Utilities;
 using Sirenix.Utilities.Editor;
-#endif
-#if UNITY_2019_1_OR_NEWER && USE_ADVANCED_GENERIC_MENU
-using GenericMenu = XNodeEditor.AdvancedGenericMenu;
 #endif
 
 namespace XNodeEditor {
     /// <summary> Base class to derive custom Node editors from. Use this to create your own custom inspectors and editors for your nodes. </summary>
     [CustomNodeEditor(typeof(XNode.Node))]
-    public class NodeEditor : XNodeEditor.Internal.NodeEditorBase<NodeEditor, NodeEditor.CustomNodeEditorAttribute, XNode.Node> {
+    public class NodeEditor : Internal.NodeEditorBase<NodeEditor, NodeEditor.CustomNodeEditorAttribute, XNode.Node> {
+
+        private readonly Color DEFAULTCOLOR = new Color32(90, 97, 105, 255);
 
         /// <summary> Fires every whenever a node was modified through the editor </summary>
         public static Action<XNode.Node> onUpdateNode;
@@ -42,32 +39,10 @@ namespace XNodeEditor {
             string[] excludes = { "m_Script", "graph", "position", "ports" };
 
 #if ODIN_INSPECTOR
-            try
-            {
-#if ODIN_INSPECTOR_3
-                objectTree.BeginDraw( true );
-#else
-                InspectorUtilities.BeginDrawPropertyTree(objectTree, true);
-#endif
-            }
-            catch ( ArgumentNullException )
-            {
-#if ODIN_INSPECTOR_3
-                objectTree.EndDraw();
-#else
-                InspectorUtilities.EndDrawPropertyTree(objectTree);
-#endif
-                NodeEditor.DestroyEditor(this.target);
-                return;
-            }
-
-            GUIHelper.PushLabelWidth( 84 );
-            objectTree.Draw( true );
-#if ODIN_INSPECTOR_3
-            objectTree.EndDraw();
-#else
+            InspectorUtilities.BeginDrawPropertyTree(objectTree, true);
+            GUIHelper.PushLabelWidth(84);
+            objectTree.Draw(true);
             InspectorUtilities.EndDrawPropertyTree(objectTree);
-#endif
             GUIHelper.PopLabelWidth();
 #else
 
@@ -82,7 +57,7 @@ namespace XNodeEditor {
 #endif
 
             // Iterate through dynamic ports and draw them in the order in which they are serialized
-            foreach (XNode.NodePort dynamicPort in target.DynamicPorts) {
+            foreach (var dynamicPort in target.DynamicPorts) {
                 if (NodeEditorGUILayout.IsDynamicPortListPort(dynamicPort)) continue;
                 NodeEditorGUILayout.PortField(dynamicPort);
             }
@@ -103,7 +78,7 @@ namespace XNodeEditor {
         }
 
         public virtual int GetWidth() {
-            Type type = target.GetType();
+            var type = target.GetType();
             int width;
             if (type.TryGetAttributeWidth(out width)) return width;
             else return 208;
@@ -112,11 +87,11 @@ namespace XNodeEditor {
         /// <summary> Returns color for target node </summary>
         public virtual Color GetTint() {
             // Try get color from [NodeTint] attribute
-            Type type = target.GetType();
+            var type = target.GetType();
             Color color;
             if (type.TryGetAttributeTint(out color)) return color;
             // Return default color (grey)
-            else return NodeEditorPreferences.GetSettings().tintColor;
+            else return DEFAULTCOLOR;
         }
 
         public virtual GUIStyle GetBodyStyle() {
@@ -127,17 +102,12 @@ namespace XNodeEditor {
             return NodeEditorResources.styles.nodeHighlight;
         }
 
-        /// <summary> Override to display custom node header tooltips </summary>
-        public virtual string GetHeaderTooltip() {
-            return null;
-        }
-
         /// <summary> Add items for the context menu when right-clicking this node. Override to add custom menu items. </summary>
         public virtual void AddContextMenuItems(GenericMenu menu) {
-            bool canRemove = true;
+            var canRemove = true;
             // Actions if only one node is selected
             if (Selection.objects.Length == 1 && Selection.activeObject is XNode.Node) {
-                XNode.Node node = Selection.activeObject as XNode.Node;
+                var node = Selection.activeObject as XNode.Node;
                 menu.AddItem(new GUIContent("Move To Top"), false, () => NodeEditorWindow.current.MoveNodeToTop(node));
                 menu.AddItem(new GUIContent("Rename"), false, NodeEditorWindow.current.RenameSelectedNode);
 
@@ -153,7 +123,7 @@ namespace XNodeEditor {
 
             // Custom sctions if only one node is selected
             if (Selection.objects.Length == 1 && Selection.activeObject is XNode.Node) {
-                XNode.Node node = Selection.activeObject as XNode.Node;
+                var node = Selection.activeObject as XNode.Node;
                 menu.AddCustomContextMenuItems(node);
             }
         }
@@ -171,7 +141,7 @@ namespace XNodeEditor {
 
         [AttributeUsage(AttributeTargets.Class)]
         public class CustomNodeEditorAttribute : Attribute,
-        XNodeEditor.Internal.NodeEditorBase<NodeEditor, NodeEditor.CustomNodeEditorAttribute, XNode.Node>.INodeEditorAttrib {
+        INodeEditorAttrib {
             private Type inspectedType;
             /// <summary> Tells a NodeEditor which Node type it is an editor for </summary>
             /// <param name="inspectedType">Type that this editor can edit</param>

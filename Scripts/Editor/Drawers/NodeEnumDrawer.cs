@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using XNode;
-using XNodeEditor;
 
 namespace XNodeEditor {
 	[CustomPropertyDrawer(typeof(NodeEnumAttribute))]
@@ -27,7 +23,7 @@ namespace XNodeEditor {
 			position = EditorGUI.PrefixLabel(position, GUIUtility.GetControlID(FocusType.Passive), label);
 
 			// Get current enum name
-			string enumName = "";
+			var enumName = "";
 			if (property.enumValueIndex >= 0 && property.enumValueIndex < property.enumDisplayNames.Length) enumName = property.enumDisplayNames[property.enumValueIndex];
 
 #if UNITY_2017_1_OR_NEWER
@@ -49,16 +45,16 @@ namespace XNodeEditor {
 
 		public static void ShowContextMenuAtMouse(SerializedProperty property) {
 			// Initialize menu
-			GenericMenu menu = new GenericMenu();
+			var menu = new GenericMenu();
 
 			// Add all enum display names to menu
-			for (int i = 0; i < property.enumDisplayNames.Length; i++) {
-				int index = i;
+			for (var i = 0; i < property.enumDisplayNames.Length; i++) {
+				var index = i;
 				menu.AddItem(new GUIContent(property.enumDisplayNames[i]), false, () => SetEnum(property, index));
 			}
 
 			// Display at cursor position
-			Rect r = new Rect(Event.current.mousePosition, new Vector2(0, 0));
+			var r = new Rect(Event.current.mousePosition, new Vector2(0, 0));
 			menu.DropDown(r);
 		}
 

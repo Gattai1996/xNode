@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 #if ODIN_INSPECTOR
@@ -24,17 +22,17 @@ namespace XNodeEditor.Internal {
 		private PropertyTree _objectTree;
 		public PropertyTree objectTree {
 			get {
-                if (this._objectTree == null){
+				if (_objectTree == null) {
 					try {
-						bool wasInEditor = NodeEditor.inNodeEditor;
+						var wasInEditor = NodeEditor.inNodeEditor;
 						NodeEditor.inNodeEditor = true;
-						this._objectTree = PropertyTree.Create(this.serializedObject);
+						_objectTree = PropertyTree.Create(serializedObject);
 						NodeEditor.inNodeEditor = wasInEditor;
 					} catch (ArgumentException ex) {
 						Debug.Log(ex);
 					}
 				}
-				return this._objectTree;
+				return _objectTree;
 			}
 		}
 #endif
@@ -43,8 +41,8 @@ namespace XNodeEditor.Internal {
 			if (target == null) return null;
 			T editor;
 			if (!editors.TryGetValue(target, out editor)) {
-				Type type = target.GetType();
-				Type editorType = GetEditorType(type);
+				var type = target.GetType();
+				var editorType = GetEditorType(type);
 				editor = Activator.CreateInstance(editorType) as T;
 				editor.target = target;
 				editor.serializedObject = new SerializedObject(target);
@@ -57,16 +55,6 @@ namespace XNodeEditor.Internal {
 			if (editor.serializedObject == null) editor.serializedObject = new SerializedObject(target);
 			return editor;
 		}
-
-        public static void DestroyEditor( K target )
-        {
-            if ( target == null ) return;
-            T editor;
-            if ( editors.TryGetValue( target, out editor ) )
-            {
-                editors.Remove( target );
-            }
-        }
 
 		private static Type GetEditorType(Type type) {
 			if (type == null) return null;
@@ -81,12 +69,12 @@ namespace XNodeEditor.Internal {
 			editorTypes = new Dictionary<Type, Type>();
 
 			//Get all classes deriving from NodeEditor via reflection
-			Type[] nodeEditors = typeof(T).GetDerivedTypes();
-			for (int i = 0; i < nodeEditors.Length; i++) {
+			var nodeEditors = typeof(T).GetDerivedTypes();
+			for (var i = 0; i < nodeEditors.Length; i++) {
 				if (nodeEditors[i].IsAbstract) continue;
 				var attribs = nodeEditors[i].GetCustomAttributes(typeof(A), false);
 				if (attribs == null || attribs.Length == 0) continue;
-				A attrib = attribs[0] as A;
+				var attrib = attribs[0] as A;
 				editorTypes.Add(attrib.GetInspectedType(), nodeEditors[i]);
 			}
 		}

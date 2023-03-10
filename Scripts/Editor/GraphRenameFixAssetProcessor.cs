@@ -16,8 +16,8 @@ namespace XNodeEditor {
             string[] deletedAssets,
             string[] movedAssets,
             string[] movedFromAssetPaths) {
-            for (int i = 0; i < movedAssets.Length; i++) {
-                Node nodeAsset = AssetDatabase.LoadMainAssetAtPath(movedAssets[i]) as Node;
+            for (var i = 0; i < movedAssets.Length; i++) {
+                var nodeAsset = AssetDatabase.LoadMainAssetAtPath(movedAssets[i]) as Node;
 
                 // If the renamed asset is a node graph, but the v2 AssetDatabase has swapped a sub-asset node to be its
                 // main asset, reset the node graph to be the main asset and rename the node asset back to its default

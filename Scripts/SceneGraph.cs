@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using XNode;
+﻿using UnityEngine;
 
 namespace XNode {
 	/// <summary> Lets you instantiate a node graph in the scene. This allows you to reference in-scene objects. </summary>
